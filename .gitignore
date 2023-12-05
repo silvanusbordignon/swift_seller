@@ -1,2 +1,10 @@
+# Default items
 /target
 /Cargo.lock
+
+# Ignore IDE config files
+.idea/
+
+# Ignore target builds
+/bin/target
+/bin/Cargo.lock
