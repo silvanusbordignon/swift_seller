@@ -8,3 +8,6 @@
 # Ignore target builds
 /bin/target
 /bin/Cargo.lock
+
+# A file with the private token will be in this folder
+.cargo/
