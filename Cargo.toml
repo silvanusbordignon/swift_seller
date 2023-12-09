@@ -4,6 +4,7 @@ name = "profit_craftor"
 version = "0.1.0"
 edition = "2021"
 exclude = [".*"]
+publish = ["kellnr"]
 
 [lib]
 name = "profit_craftor"

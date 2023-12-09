@@ -19,7 +19,7 @@ These are the features we intend to add to the tool:
 
 We build this tool incrementally, by adding small capabilities, one at a time:
 
-- [ ] Pull the library from the register and have a running robot
+- [x] Pull the library from the register and have a running robot
 - [ ] Detect when the robot is near a market
 - [ ] Sell everything the robot holds in its backpack
 - [ ] Filter for what we want to sell and what we prefer not to
