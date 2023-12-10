@@ -125,7 +125,7 @@ impl ProfitCraftor {
     }
 }
 
-// todo!(Finish function, basically a wrapper, UPDATE TESTS, then update README.md with new desc);
+// todo!(UPDATE TESTS, then update README.md with new desc);
 
 #[cfg(test)]
 mod tests {
