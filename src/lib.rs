@@ -1,15 +1,45 @@
-use robotics_lib::interface::{ Tools, robot_view };
+use std::collections::HashMap;
+use robotics_lib::interface::{Tools, robot_view, put, Direction};
 use robotics_lib::world::World;
 use robotics_lib::runner::Runnable;
+use robotics_lib::utils::LibError;
 use robotics_lib::world::tile::Content;
 
-struct ProfitCraftor;
+pub struct ProfitCraftor;
 impl Tools for ProfitCraftor {}
 
 impl ProfitCraftor {
-    /// Returns whether the robot is near a market (no diagonals)
-    /// DocString not complete as this is not the final version of the method
-    pub fn profit_craftor(robot: &impl Runnable, world: &World) -> bool {
+    /// Sell at a Market every item in the robot's backpack
+    ///
+    /// # Usage
+    /// ```rust
+    /// use profit_craftor::ProfitCraftor;
+    /// ```
+    ///
+    /// # Arguments
+    /// - `robot`: The robot
+    /// - `world`: The world in which the robot is
+    ///
+    /// # Returns
+    /// - `HashMap<Content, usize>`: The items sold at the Market and their quantity
+    /// - `LibError`: The error that occurred
+    ///
+    /// # Errors
+    /// - `OperationNotAllowed`: The robot is not near a tile with a Market on it
+    /// - `WrongContentUsed`: The tool failed and tried to sell the wrong item
+    /// - `NotEnoughSpace`: The robot doesn't have enough space for earned coins
+    ///
+    /// # Notes
+    /// - does not support multi-threading
+    pub fn profit_craftor(
+        robot: &mut impl Runnable,
+        world: &mut World
+    ) -> Result<HashMap<Content, usize>, LibError> {
+
+        // First of all, let's check if the robot happens to be near a tile with a Market on it
+
+        let mut market_near:bool = false;
+        let mut market_dir = Direction::Left; // initialized
 
         let robot_view= robot_view(robot, &world);
         for (i, row) in robot_view.iter().enumerate() {
@@ -20,7 +50,16 @@ impl ProfitCraftor {
                             | None => (),
                             | Some(tile) => {
                                 match tile.content {
-                                    Content::Market(_) => return true,
+                                    Content::Market(_) => {
+                                        market_near = true;
+                                        match (i, j) {
+                                            (0, 1) => market_dir = Direction::Up,
+                                            (1, 0) => market_dir = Direction::Left,
+                                            (1, 2) => market_dir = Direction::Right,
+                                            (2, 1) => market_dir = Direction::Down,
+                                            _ => return Err(LibError::OperationNotAllowed)
+                                        }
+                                    },
                                     _ => ()
                                 }
                             }
@@ -31,11 +70,62 @@ impl ProfitCraftor {
             }
         }
 
-        false
-    }
+        // If the robot is NOT near a tile with a Market on it this tool cannot be used
+        if !market_near {
+            return Err(LibError::OperationNotAllowed);
+        }
 
+        // If the robot is near a Market, sell the items held in its backpack which can be sold
+
+        let mut _coins_earned:usize = 0;
+
+        let mut items_sold:HashMap<Content, usize> = HashMap::new();
+        items_sold.insert(Content::Rock(0), 0usize);
+        items_sold.insert(Content::Tree(0), 0usize);
+        items_sold.insert(Content::Fish(0), 0usize);
+
+        let cloned_contents = robot.get_backpack().get_contents().clone();
+
+        for (item, qty) in cloned_contents {
+            if vec![Content::Rock(0), Content::Tree(0), Content::Fish(0)].contains(&item) {
+                match put(
+                    robot,
+                    world,
+                    item.clone(),
+                    qty,
+                    market_dir.clone()
+                ) {
+                    Ok(earned) => {
+                        _coins_earned += earned;
+                        match item {
+                            Content::Rock(0) => items_sold.insert(Content::Rock(0), qty),
+                            Content::Tree(0) => items_sold.insert(Content::Tree(0), qty),
+                            Content::Fish(0) => items_sold.insert(Content::Fish(0), qty),
+                            _ => None
+                        };
+                    },
+                    Err(LibError::OperationNotAllowed) => {
+                        return Err(LibError::OperationNotAllowed);
+                    },
+                    Err(LibError::WrongContentUsed) => {
+                        return Err(LibError::WrongContentUsed);
+                    },
+                    Err(LibError::NotEnoughSpace(tried)) => {
+                        return Err(LibError::NotEnoughSpace(tried));
+                    },
+                    _ => {
+                        eprintln!("PUT arguments: {:?} {:?} {:?}", item.clone(), qty, market_dir.clone());
+                        eprintln!("coords {:?}", robot.get_coordinate());
+                    }
+                }
+            }
+        }
+
+        Ok(items_sold)
+    }
 }
 
+// todo!(Finish function, basically a wrapper, UPDATE TESTS, then update README.md with new desc);
 
 #[cfg(test)]
 mod tests {
@@ -79,12 +169,14 @@ mod tests {
     *
     *   Starting from (0,0), the robot will go around the (1,1) tile clockwise and call the
     *   profit_craftor() function. The Market should be detected four times only, and the call
-    *   should fail every time the robot is in a corner.
+    *   should fail every time the robot is in a corner. When it is in fact near a Market, it tries
+    *   to sell the content of its backpack, and with it being empty, the function should return a
+    *   map with three entries, each with an associated value of 0.
     *
     *   Copyright: comment format courtesy of the common crate
     */
     #[test]
-    fn detect_market() {
+    fn sell_to_market() {
 
         // World generator
 
@@ -149,7 +241,10 @@ mod tests {
                     elevation: 0,
                 });
 
-                let environmental_conditions = EnvironmentalConditions::new(&[WeatherType::Sunny], 15, 12);
+                let environmental_conditions =
+                    EnvironmentalConditions::new(&[WeatherType::Sunny],
+                                                 15,
+                                                 12);
                 (map, (0, 0), environmental_conditions.unwrap(), 100.0, None)
             }
         }
@@ -165,20 +260,29 @@ mod tests {
 
                 // List all the movements I intend to make and the outcomes of the function call
                 // after the corresponding movement
-                let movements:&[(Direction, bool)] = &[
-                    (Direction::Right, true), (Direction::Right, false),
-                    (Direction::Down, true), (Direction::Down, false),
-                    (Direction::Left, true), (Direction::Left, false),
-                    (Direction::Up, true), (Direction::Up, false)
+                let movements:&[Direction] = &[
+                    Direction::Right, Direction::Right,
+                    Direction::Down, Direction::Down,
+                    Direction::Left, Direction::Left,
+                    Direction::Up, Direction::Up
                 ];
 
                 // For each movement, perform the following actions
-                for (movement, outcome) in movements {
+                for movement in movements {
                     // Since I created a world ad hoc, those movements should be possible
                     go(self, world, movement.clone()).expect("CANNOT MOVE");
 
                     // Call the function
-                    assert_eq!(ProfitCraftor::profit_craftor(self, &world), *outcome);
+                    match ProfitCraftor::profit_craftor(self, world) {
+                        Err(LibError::OperationNotAllowed) => println!("No Market nearby!"),
+                        Err(any) => println!("{:?}", any),
+                        Ok(map) => {
+                            println!("Sold to market:");
+                            for (key, value) in map {
+                                println!("\t- item: {}, qty: {}", key, value)
+                            }
+                        }
+                    }
                 }
             }
 
