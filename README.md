@@ -32,3 +32,4 @@ All the while we also need to take into consideration:
 
 - [ ] Documentation
 - [ ] Errors returned to the user
+  - as of right now we consider returning a `LibError::OperationNotAllowed` when the robot is not near a `Market` and `LibError::NotEnoughEnergy` when the energy required for all the selling is more than what the robot has; subject tu future changes
