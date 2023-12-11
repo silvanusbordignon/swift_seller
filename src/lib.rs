@@ -5,15 +5,15 @@ use robotics_lib::runner::Runnable;
 use robotics_lib::utils::LibError;
 use robotics_lib::world::tile::Content;
 
-pub struct ProfitCraftor;
-impl Tools for ProfitCraftor {}
+pub struct SwiftSeller;
+impl Tools for SwiftSeller {}
 
-impl ProfitCraftor {
+impl SwiftSeller {
     /// Sell at a Market every item in the robot's backpack
     ///
     /// # Usage
     /// ```rust
-    /// use profit_craftor::ProfitCraftor;
+    /// use swift_seller::SwiftSeller;
     /// ```
     ///
     /// # Arguments
@@ -30,7 +30,7 @@ impl ProfitCraftor {
     ///
     /// # Notes
     /// - does not support multi-threading
-    pub fn profit_craftor(
+    pub fn swift_seller(
         robot: &mut impl Runnable,
         world: &mut World
     ) -> Result<HashMap<Content, usize>, LibError> {
@@ -160,7 +160,7 @@ mod tests {
     *   TEST:
     *
     *   Starting from (0,0), the robot will go around the (1,1) tile clockwise and call the
-    *   profit_craftor() function. The Market should be detected four times only, and the call
+    *   swift_seller() function. The Market should be detected four times only, and the call
     *   should fail every time the robot is in a corner. When it is in fact near a Market, it tries
     *   to sell the content of its backpack, and with it being empty, the function should return a
     *   map with three entries, each with an associated value of 0.
@@ -265,7 +265,7 @@ mod tests {
                     go(self, world, movement.clone()).expect("CANNOT MOVE");
 
                     // Call the function
-                    match ProfitCraftor::profit_craftor(self, world) {
+                    match SwiftSeller::swift_seller(self, world) {
                         Err(LibError::OperationNotAllowed) => println!("No Market nearby!"),
                         Err(any) => println!("{:?}", any),
                         Ok(map) => {

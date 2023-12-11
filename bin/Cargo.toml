@@ -7,4 +7,4 @@ edition = "2021"
 
 [dependencies]
 robotics_lib = { version = "0.1.4", registry = "kellnr" }
-profit_craftor = { path = "../" }
+swift_seller = { path = "../" }

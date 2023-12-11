@@ -1,13 +1,13 @@
 [package]
 authors = ["Andrea Ervetti", "Silvanus Bordignon"]
-name = "profit_craftor"
+name = "swift_seller"
 version = "0.1.0"
 edition = "2021"
 exclude = [".*"]
 publish = ["kellnr"]
 
 [lib]
-name = "profit_craftor"
+name = "swift_seller"
 path = "src/lib.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
