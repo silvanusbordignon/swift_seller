@@ -87,7 +87,8 @@ impl ProfitCraftor {
         let cloned_contents = robot.get_backpack().get_contents().clone();
 
         for (item, qty) in cloned_contents {
-            if vec![Content::Rock(0), Content::Tree(0), Content::Fish(0)].contains(&item) {
+            if vec![Content::Rock(0), Content::Tree(0), Content::Fish(0)].contains(&item)
+                && qty > 0 {
                 match put(
                     robot,
                     world,
