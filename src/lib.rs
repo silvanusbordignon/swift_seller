@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use robotics_lib::interface::{Tools, robot_view, put, Direction};
+use robotics_lib::interface::{Tools, robot_view, put, Direction, where_am_i};
 use robotics_lib::world::World;
 use robotics_lib::runner::Runnable;
 use robotics_lib::utils::LibError;
@@ -107,11 +107,13 @@ impl SwiftSeller {
                     Err(LibError::NotEnoughSpace(tried)) => {
                         return Err(LibError::NotEnoughSpace(tried));
                     },
-                    _ => {
+                    Err(err) => {
+                        eprintln!("{:?}", err);
                         eprintln!("PUT arguments: {:?} {:?} {:?}",
                                   item.clone(),
                                   qty,
                                   market_dir.clone());
+
                         panic!("UNEXPECTED ERROR - CONTACT THE GROUP")
                     }
                 }
@@ -203,12 +205,12 @@ mod tests {
                 });
                 map[1].push(Tile {
                     tile_type: TileType::Grass,
-                    content: Content::Market(1),
+                    content: Content::Market(4),
                     elevation: 0,
                 });
                 map[1].push(Tile {
                     tile_type: TileType::Grass,
-                    content: Content::Rock(6),
+                    content: Content::Rock(3),
                     elevation: 0,
                 });
 
@@ -353,12 +355,12 @@ mod tests {
                 });
                 map[1].push(Tile {
                     tile_type: TileType::Grass,
-                    content: Content::Market(1),
+                    content: Content::Market(4),
                     elevation: 0,
                 });
                 map[1].push(Tile {
                     tile_type: TileType::Grass,
-                    content: Content::Rock(6),
+                    content: Content::Rock(3),
                     elevation: 0,
                 });
 
@@ -510,12 +512,12 @@ mod tests {
                 });
                 map[1].push(Tile {
                     tile_type: TileType::Grass,
-                    content: Content::Market(1),
+                    content: Content::Market(4),
                     elevation: 0,
                 });
                 map[1].push(Tile {
                     tile_type: TileType::Grass,
-                    content: Content::Rock(6),
+                    content: Content::Rock(3),
                     elevation: 0,
                 });
 
@@ -565,6 +567,9 @@ mod tests {
                 // For each movement, perform the following actions
                 for  movement in movements {
 
+                    println!("--------");
+
+                    println!("Destroy {:?}", movement);
                     // Since I created a world ad hoc, these destroy() should have enough energy
                     match destroy(self, world, movement.clone()) {
                         Ok(_) => (),
@@ -577,7 +582,44 @@ mod tests {
                     }
 
                     // Since I created a world ad hoc, those movements should be possible
+                    println!("Go {:?}", movement);
                     go(self, world, movement.clone()).expect("CANNOT MOVE");
+
+                    let (robot_view, _) = where_am_i(self, &world);
+
+                    for row in robot_view.iter() {
+                        for col in row.iter() {
+                            match col {
+                                | None => print!(" None "),
+                                | Some(tile) => {
+                                    if tile.content != Content::None {
+                                        print!(" {:?}({:?}) ", tile.tile_type, tile.content)
+                                    }
+                                    else {
+                                        print!(" {:?} ", tile.tile_type)
+                                    }
+                                },
+                            }
+                        }
+                        println!();
+                    }
+
+                    // Now I can finally call the function to interact with the Market
+                    println!("Sell?");
+                    match SwiftSeller::swift_seller(self, world) {
+                        Err(LibError::OperationNotAllowed) =>
+                            eprintln!("No Market nearby!"),
+                        Err(LibError::NotEnoughSpace(tried)) =>
+                            eprintln!("Can't hold {} coins!", tried),
+                        Err(any) =>
+                            eprintln!("{:?}", any),
+                        Ok(map) => {
+                            println!("Sold to market:");
+                            for (key, value) in map {
+                                println!("\t- item: {}, qty: {}", key, value)
+                            }
+                        }
+                    }
                 }
             }
 
