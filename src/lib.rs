@@ -165,13 +165,17 @@ mod tests {
     *   Copyright: comment format courtesy of the common crate
     */
 
-    fn test_world() -> impl Generator {
+    fn test_world(market_interactions: usize) -> impl Generator {
         // World generator
 
-        struct MarketWorld {}
+        struct MarketWorld {
+            market_interactions: usize
+        }
         impl MarketWorld {
-            fn new() -> Self {
-                MarketWorld {}
+            fn new(market_interactions: usize) -> Self {
+                MarketWorld {
+                    market_interactions
+                }
             }
         }
         impl Generator for MarketWorld {
@@ -203,7 +207,7 @@ mod tests {
                 });
                 map[1].push(Tile {
                     tile_type: TileType::Grass,
-                    content: Content::Market(4),
+                    content: Content::Market(self.market_interactions),
                     elevation: 0,
                 });
                 map[1].push(Tile {
@@ -237,7 +241,7 @@ mod tests {
             }
         }
 
-        MarketWorld::new()
+        MarketWorld::new(market_interactions)
     }
 
     fn start(run: Result<Runner, LibError>) {
@@ -256,7 +260,7 @@ mod tests {
     fn no_market_nearby() {
 
         // Generate the test world
-        let mut generator = test_world();
+        let mut generator = test_world(0);
 
         // Robot
 
@@ -328,7 +332,7 @@ mod tests {
     fn sell_empty_backpack() {
 
         // Generate the test world
-        let mut generator = test_world();
+        let mut generator = test_world(10);
 
         // Robot
 
@@ -407,7 +411,7 @@ mod tests {
     fn destroy_and_sell_items() {
 
         // Generate the test world
-        let mut generator = test_world();
+        let mut generator = test_world(10);
 
         // Robot
 
