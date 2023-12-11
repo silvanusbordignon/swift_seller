@@ -26,7 +26,6 @@ impl ProfitCraftor {
     ///
     /// # Errors
     /// - `OperationNotAllowed`: The robot is not near a tile with a Market on it
-    /// - `WrongContentUsed`: The tool failed and tried to sell the wrong item
     /// - `NotEnoughSpace`: The robot doesn't have enough space for earned coins
     ///
     /// # Notes
@@ -105,18 +104,12 @@ impl ProfitCraftor {
                             _ => None
                         };
                     },
-                    Err(LibError::OperationNotAllowed) => {
-                        return Err(LibError::OperationNotAllowed);
-                    },
-                    Err(LibError::WrongContentUsed) => {
-                        return Err(LibError::WrongContentUsed);
-                    },
                     Err(LibError::NotEnoughSpace(tried)) => {
                         return Err(LibError::NotEnoughSpace(tried));
                     },
                     _ => {
                         eprintln!("PUT arguments: {:?} {:?} {:?}", item.clone(), qty, market_dir.clone());
-                        eprintln!("coords {:?}", robot.get_coordinate());
+                        panic!("UNEXPECTED ERROR - CONTACT THE GROUP")
                     }
                 }
             }
@@ -125,8 +118,6 @@ impl ProfitCraftor {
         Ok(items_sold)
     }
 }
-
-// todo!(UPDATE TESTS, then update README.md with new desc);
 
 #[cfg(test)]
 mod tests {
