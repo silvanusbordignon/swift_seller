@@ -165,9 +165,7 @@ mod tests {
     *   Copyright: comment format courtesy of the common crate
     */
 
-    #[test]
-    fn no_market_nearby() {
-
+    fn test_world() -> impl Generator {
         // World generator
 
         struct MarketWorld {}
@@ -239,7 +237,26 @@ mod tests {
             }
         }
 
-        let mut generator: MarketWorld = MarketWorld::new();
+        MarketWorld::new()
+    }
+
+    fn start(run: Result<Runner, LibError>) {
+        match run {
+            | Ok(mut r) => {
+                let _ = r.game_tick();
+            }
+            | Err(e) => {
+                println!("{:?}", e);
+                exit(1)
+            },
+        }
+    }
+
+    #[test]
+    fn no_market_nearby() {
+
+        // Generate the test world
+        let mut generator = test_world();
 
         // Robot
 
@@ -304,92 +321,14 @@ mod tests {
 
         // Since the weather is sunny day, the robot is walking on grass, and it starts with full
         // energy, I can walk around the Market content all in one tick
-        match run {
-            | Ok(mut r) => {
-                let _ = r.game_tick();
-            }
-            | Err(e) => {
-                println!("{:?}", e);
-                exit(1)
-            },
-        }
+        start(run);
     }
 
     #[test]
     fn sell_empty_backpack() {
 
-        // World generator
-
-        struct MarketWorld {}
-        impl MarketWorld {
-            fn new() -> Self {
-                MarketWorld {}
-            }
-        }
-        impl Generator for MarketWorld {
-            fn gen(&mut self) -> robotics_lib::world::world_generator::World {
-                let mut map: Vec<Vec<Tile>> = Vec::new();
-
-                map.push(Vec::new());
-                map[0].push(Tile {
-                    tile_type: TileType::Grass,
-                    content: Content::None,
-                    elevation: 0,
-                });
-                map[0].push(Tile {
-                    tile_type: TileType::Grass,
-                    content: Content::Tree(3),
-                    elevation: 0,
-                });
-                map[0].push(Tile {
-                    tile_type: TileType::Grass,
-                    content: Content::Tree(4),
-                    elevation: 0,
-                });
-
-                map.push(Vec::new());
-                map[1].push(Tile {
-                    tile_type: TileType::ShallowWater,
-                    content: Content::Fish(3),
-                    elevation: 0,
-                });
-                map[1].push(Tile {
-                    tile_type: TileType::Grass,
-                    content: Content::Market(4),
-                    elevation: 0,
-                });
-                map[1].push(Tile {
-                    tile_type: TileType::Grass,
-                    content: Content::Rock(3),
-                    elevation: 0,
-                });
-
-                map.push(Vec::new());
-                map[2].push(Tile {
-                    tile_type: TileType::Grass,
-                    content: Content::Rock(2),
-                    elevation: 0,
-                });
-                map[2].push(Tile {
-                    tile_type: TileType::Grass,
-                    content: Content::None,
-                    elevation: 0,
-                });
-                map[2].push(Tile {
-                    tile_type: TileType::Grass,
-                    content: Content::Rock(6),
-                    elevation: 0,
-                });
-
-                let environmental_conditions =
-                    EnvironmentalConditions::new(&[WeatherType::Sunny],
-                                                 15,
-                                                 12);
-                (map, (0, 0), environmental_conditions.unwrap(), 100.0, None)
-            }
-        }
-
-        let mut generator: MarketWorld = MarketWorld::new();
+        // Generate the test world
+        let mut generator = test_world();
 
         // Robot
 
@@ -461,92 +400,14 @@ mod tests {
 
         // Since the weather is sunny day, the robot is walking on grass, and it starts with full
         // energy, I can walk around the Market content all in one tick
-        match run {
-            | Ok(mut r) => {
-                let _ = r.game_tick();
-            }
-            | Err(e) => {
-                println!("{:?}", e);
-                exit(1)
-            },
-        }
+        start(run);
     }
 
     #[test]
     fn destroy_and_sell_items() {
 
-        // World generator
-
-        struct MarketWorld {}
-        impl MarketWorld {
-            fn new() -> Self {
-                MarketWorld {}
-            }
-        }
-        impl Generator for MarketWorld {
-            fn gen(&mut self) -> robotics_lib::world::world_generator::World {
-                let mut map: Vec<Vec<Tile>> = Vec::new();
-
-                map.push(Vec::new());
-                map[0].push(Tile {
-                    tile_type: TileType::Grass,
-                    content: Content::None,
-                    elevation: 0,
-                });
-                map[0].push(Tile {
-                    tile_type: TileType::Grass,
-                    content: Content::Tree(3),
-                    elevation: 0,
-                });
-                map[0].push(Tile {
-                    tile_type: TileType::Grass,
-                    content: Content::Tree(4),
-                    elevation: 0,
-                });
-
-                map.push(Vec::new());
-                map[1].push(Tile {
-                    tile_type: TileType::ShallowWater,
-                    content: Content::Fish(3),
-                    elevation: 0,
-                });
-                map[1].push(Tile {
-                    tile_type: TileType::Grass,
-                    content: Content::Market(4),
-                    elevation: 0,
-                });
-                map[1].push(Tile {
-                    tile_type: TileType::Grass,
-                    content: Content::Rock(3),
-                    elevation: 0,
-                });
-
-                map.push(Vec::new());
-                map[2].push(Tile {
-                    tile_type: TileType::Grass,
-                    content: Content::Rock(2),
-                    elevation: 0,
-                });
-                map[2].push(Tile {
-                    tile_type: TileType::Grass,
-                    content: Content::None,
-                    elevation: 0,
-                });
-                map[2].push(Tile {
-                    tile_type: TileType::Grass,
-                    content: Content::Rock(6),
-                    elevation: 0,
-                });
-
-                let environmental_conditions =
-                    EnvironmentalConditions::new(&[WeatherType::Sunny],
-                                                 15,
-                                                 12);
-                (map, (0, 0), environmental_conditions.unwrap(), 100.0, None)
-            }
-        }
-
-        let mut generator: MarketWorld = MarketWorld::new();
+        // Generate the test world
+        let mut generator = test_world();
 
         // Robot
 
@@ -655,14 +516,6 @@ mod tests {
 
         // Since the weather is sunny day, the robot is walking on grass, and it starts with full
         // energy, I can walk around the Market content all in one tick
-        match run {
-            | Ok(mut r) => {
-                let _ = r.game_tick();
-            }
-            | Err(e) => {
-                println!("{:?}", e);
-                exit(1)
-            },
-        }
+        start(run);
     }
 }
