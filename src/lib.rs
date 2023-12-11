@@ -108,7 +108,10 @@ impl SwiftSeller {
                         return Err(LibError::NotEnoughSpace(tried));
                     },
                     _ => {
-                        eprintln!("PUT arguments: {:?} {:?} {:?}", item.clone(), qty, market_dir.clone());
+                        eprintln!("PUT arguments: {:?} {:?} {:?}",
+                                  item.clone(),
+                                  qty,
+                                  market_dir.clone());
                         panic!("UNEXPECTED ERROR - CONTACT THE GROUP")
                     }
                 }
@@ -126,7 +129,7 @@ mod tests {
     use robotics_lib::energy::Energy;
     use robotics_lib::event::events::Event;
 
-    use robotics_lib::interface::{Direction, go};
+    use robotics_lib::interface::{destroy, Direction, go};
 
     use robotics_lib::runner::backpack::BackPack;
     use robotics_lib::runner::{Robot, Runner};
@@ -144,31 +147,24 @@ mod tests {
     *   |            |            |            |
     *   |    Grass   |   Grass    |   Grass    |
     *   |    0 el    |   0 el     |    0 el    |
-    *   |    None    |  Tree(1)   |    None    |
+    *   |    None    |  Tree(3)   |   Tree(4)  |
     *   |____________|____________|____________|
     *   |            |            |            |
-    *   |    Grass   |   Grass    |   Grass    |
+    *   |   Shallow  |   Grass    |   Grass    |
     *   |    0 el    |   0 el     |    0 el    |
-    *   |    None    | Market(1)  |    None    |
+    *   |   Fish(3)  | Market(1)  |   Rock(3)  |
     *   |____________|____________|____________|
     *   |            |            |            |
     *   |    Grass   |    Grass   |   Grass    |
     *   |    0 el    |    0 el    |    0 el    |
-    *   |    None    |    None    |  Tree(2)   |
+    *   |   Rock(2)  |    None    |   Rock(6)  |
     *   |____________|____________|____________|
-    *
-    *   TEST:
-    *
-    *   Starting from (0,0), the robot will go around the (1,1) tile clockwise and call the
-    *   swift_seller() function. The Market should be detected four times only, and the call
-    *   should fail every time the robot is in a corner. When it is in fact near a Market, it tries
-    *   to sell the content of its backpack, and with it being empty, the function should return a
-    *   map with three entries, each with an associated value of 0.
     *
     *   Copyright: comment format courtesy of the common crate
     */
+
     #[test]
-    fn sell_to_market() {
+    fn no_market_nearby() {
 
         // World generator
 
@@ -190,19 +186,19 @@ mod tests {
                 });
                 map[0].push(Tile {
                     tile_type: TileType::Grass,
-                    content: Content::Tree(1),
+                    content: Content::Tree(3),
                     elevation: 0,
                 });
                 map[0].push(Tile {
                     tile_type: TileType::Grass,
-                    content: Content::None,
+                    content: Content::Tree(4),
                     elevation: 0,
                 });
 
                 map.push(Vec::new());
                 map[1].push(Tile {
-                    tile_type: TileType::Grass,
-                    content: Content::None,
+                    tile_type: TileType::ShallowWater,
+                    content: Content::Fish(3),
                     elevation: 0,
                 });
                 map[1].push(Tile {
@@ -212,14 +208,14 @@ mod tests {
                 });
                 map[1].push(Tile {
                     tile_type: TileType::Grass,
-                    content: Content::None,
+                    content: Content::Rock(6),
                     elevation: 0,
                 });
 
                 map.push(Vec::new());
                 map[2].push(Tile {
                     tile_type: TileType::Grass,
-                    content: Content::None,
+                    content: Content::Rock(2),
                     elevation: 0,
                 });
                 map[2].push(Tile {
@@ -229,7 +225,7 @@ mod tests {
                 });
                 map[2].push(Tile {
                     tile_type: TileType::Grass,
-                    content: Content::Tree(2),
+                    content: Content::Rock(6),
                     elevation: 0,
                 });
 
@@ -260,21 +256,328 @@ mod tests {
                 ];
 
                 // For each movement, perform the following actions
-                for movement in movements {
+                for (i, movement) in movements.iter().enumerate() {
                     // Since I created a world ad hoc, those movements should be possible
                     go(self, world, movement.clone()).expect("CANNOT MOVE");
 
-                    // Call the function
-                    match SwiftSeller::swift_seller(self, world) {
-                        Err(LibError::OperationNotAllowed) => println!("No Market nearby!"),
-                        Err(any) => println!("{:?}", any),
-                        Ok(map) => {
-                            println!("Sold to market:");
-                            for (key, value) in map {
-                                println!("\t- item: {}, qty: {}", key, value)
-                            }
-                        }
+                    // Every two moves I should NOT find a market nearby
+                    if i % 2 != 0 {
+                        assert_eq!(
+                            SwiftSeller::swift_seller(self, world),
+                            Err(LibError::OperationNotAllowed)
+                        )
                     }
+                }
+            }
+
+            fn handle_event(&mut self, event: Event) {
+                match event {
+                    | Event::Terminated => {}
+                    | _ => {}
+                }
+            }
+
+            fn get_energy(&self) -> &Energy {
+                &self.0.energy
+            }
+            fn get_energy_mut(&mut self) -> &mut Energy {
+                &mut self.0.energy
+            }
+            fn get_coordinate(&self) -> &Coordinate {
+                &self.0.coordinate
+            }
+            fn get_coordinate_mut(&mut self) -> &mut Coordinate {
+                &mut self.0.coordinate
+            }
+            fn get_backpack(&self) -> &BackPack {
+                &self.0.backpack
+            }
+            fn get_backpack_mut(&mut self) -> &mut BackPack { &mut self.0.backpack }
+        }
+
+        // Instance the robot and the world
+
+        let my_robot = MyRobot(Robot::new());
+        let run = Runner::new(Box::new(my_robot), &mut generator);
+
+        // Since the weather is sunny day, the robot is walking on grass, and it starts with full
+        // energy, I can walk around the Market content all in one tick
+        match run {
+            | Ok(mut r) => {
+                let _ = r.game_tick();
+            }
+            | Err(e) => {
+                println!("{:?}", e);
+                exit(1)
+            },
+        }
+    }
+
+    #[test]
+    fn sell_empty_backpack() {
+
+        // World generator
+
+        struct MarketWorld {}
+        impl MarketWorld {
+            fn new() -> Self {
+                MarketWorld {}
+            }
+        }
+        impl Generator for MarketWorld {
+            fn gen(&mut self) -> robotics_lib::world::world_generator::World {
+                let mut map: Vec<Vec<Tile>> = Vec::new();
+
+                map.push(Vec::new());
+                map[0].push(Tile {
+                    tile_type: TileType::Grass,
+                    content: Content::None,
+                    elevation: 0,
+                });
+                map[0].push(Tile {
+                    tile_type: TileType::Grass,
+                    content: Content::Tree(3),
+                    elevation: 0,
+                });
+                map[0].push(Tile {
+                    tile_type: TileType::Grass,
+                    content: Content::Tree(4),
+                    elevation: 0,
+                });
+
+                map.push(Vec::new());
+                map[1].push(Tile {
+                    tile_type: TileType::ShallowWater,
+                    content: Content::Fish(3),
+                    elevation: 0,
+                });
+                map[1].push(Tile {
+                    tile_type: TileType::Grass,
+                    content: Content::Market(1),
+                    elevation: 0,
+                });
+                map[1].push(Tile {
+                    tile_type: TileType::Grass,
+                    content: Content::Rock(6),
+                    elevation: 0,
+                });
+
+                map.push(Vec::new());
+                map[2].push(Tile {
+                    tile_type: TileType::Grass,
+                    content: Content::Rock(2),
+                    elevation: 0,
+                });
+                map[2].push(Tile {
+                    tile_type: TileType::Grass,
+                    content: Content::None,
+                    elevation: 0,
+                });
+                map[2].push(Tile {
+                    tile_type: TileType::Grass,
+                    content: Content::Rock(6),
+                    elevation: 0,
+                });
+
+                let environmental_conditions =
+                    EnvironmentalConditions::new(&[WeatherType::Sunny],
+                                                 15,
+                                                 12);
+                (map, (0, 0), environmental_conditions.unwrap(), 100.0, None)
+            }
+        }
+
+        let mut generator: MarketWorld = MarketWorld::new();
+
+        // Robot
+
+        struct MyRobot(Robot);
+
+        impl Runnable for MyRobot {
+            fn process_tick(&mut self, world: &mut World) {
+
+                // List all the movements I intend to make and the outcomes of the function call
+                // after the corresponding movement
+                let movements:&[Direction] = &[
+                    Direction::Right, Direction::Right,
+                    Direction::Down, Direction::Down,
+                    Direction::Left, Direction::Left,
+                    Direction::Up, Direction::Up
+                ];
+
+                // For each movement, perform the following actions
+                for (i, movement) in movements.iter().enumerate() {
+                    // Since I created a world ad hoc, those movements should be possible
+                    go(self, world, movement.clone()).expect("CANNOT MOVE");
+
+                    // When I'm nearby a market, I should try to sell everything; I have an empty
+                    // backpack, so the returned value from the function call should be:
+                    let mut empty_map:HashMap<Content, usize> = HashMap::new();
+                    empty_map.insert(Content::Rock(0), 0);
+                    empty_map.insert(Content::Tree(0), 0);
+                    empty_map.insert(Content::Fish(0), 0);
+
+                    // Let's check
+                    if i % 2 == 0 {
+                        assert_eq!(
+                            SwiftSeller::swift_seller(self, world),
+                            Ok(empty_map)
+                        )
+                    }
+                }
+            }
+
+            fn handle_event(&mut self, event: Event) {
+                match event {
+                    | Event::Terminated => {}
+                    | _ => {}
+                }
+            }
+
+            fn get_energy(&self) -> &Energy {
+                &self.0.energy
+            }
+            fn get_energy_mut(&mut self) -> &mut Energy {
+                &mut self.0.energy
+            }
+            fn get_coordinate(&self) -> &Coordinate {
+                &self.0.coordinate
+            }
+            fn get_coordinate_mut(&mut self) -> &mut Coordinate {
+                &mut self.0.coordinate
+            }
+            fn get_backpack(&self) -> &BackPack {
+                &self.0.backpack
+            }
+            fn get_backpack_mut(&mut self) -> &mut BackPack { &mut self.0.backpack }
+        }
+
+        // Instance the robot and the world
+
+        let my_robot = MyRobot(Robot::new());
+        let run = Runner::new(Box::new(my_robot), &mut generator);
+
+        // Since the weather is sunny day, the robot is walking on grass, and it starts with full
+        // energy, I can walk around the Market content all in one tick
+        match run {
+            | Ok(mut r) => {
+                let _ = r.game_tick();
+            }
+            | Err(e) => {
+                println!("{:?}", e);
+                exit(1)
+            },
+        }
+    }
+
+    #[test]
+    fn destroy_and_sell_items() {
+
+        // World generator
+
+        struct MarketWorld {}
+        impl MarketWorld {
+            fn new() -> Self {
+                MarketWorld {}
+            }
+        }
+        impl Generator for MarketWorld {
+            fn gen(&mut self) -> robotics_lib::world::world_generator::World {
+                let mut map: Vec<Vec<Tile>> = Vec::new();
+
+                map.push(Vec::new());
+                map[0].push(Tile {
+                    tile_type: TileType::Grass,
+                    content: Content::None,
+                    elevation: 0,
+                });
+                map[0].push(Tile {
+                    tile_type: TileType::Grass,
+                    content: Content::Tree(3),
+                    elevation: 0,
+                });
+                map[0].push(Tile {
+                    tile_type: TileType::Grass,
+                    content: Content::Tree(4),
+                    elevation: 0,
+                });
+
+                map.push(Vec::new());
+                map[1].push(Tile {
+                    tile_type: TileType::ShallowWater,
+                    content: Content::Fish(3),
+                    elevation: 0,
+                });
+                map[1].push(Tile {
+                    tile_type: TileType::Grass,
+                    content: Content::Market(1),
+                    elevation: 0,
+                });
+                map[1].push(Tile {
+                    tile_type: TileType::Grass,
+                    content: Content::Rock(6),
+                    elevation: 0,
+                });
+
+                map.push(Vec::new());
+                map[2].push(Tile {
+                    tile_type: TileType::Grass,
+                    content: Content::Rock(2),
+                    elevation: 0,
+                });
+                map[2].push(Tile {
+                    tile_type: TileType::Grass,
+                    content: Content::None,
+                    elevation: 0,
+                });
+                map[2].push(Tile {
+                    tile_type: TileType::Grass,
+                    content: Content::Rock(6),
+                    elevation: 0,
+                });
+
+                let environmental_conditions =
+                    EnvironmentalConditions::new(&[WeatherType::Sunny],
+                                                 15,
+                                                 12);
+                (map, (0, 0), environmental_conditions.unwrap(), 100.0, None)
+            }
+        }
+
+        let mut generator: MarketWorld = MarketWorld::new();
+
+        // Robot
+
+        struct MyRobot(Robot);
+
+        impl Runnable for MyRobot {
+            fn process_tick(&mut self, world: &mut World) {
+
+                // List all the movements I intend to make and the outcomes of the function call
+                // after the corresponding movement
+                let movements:&[Direction] = &[
+                    Direction::Right, Direction::Right,
+                    Direction::Down, Direction::Down,
+                    Direction::Left, Direction::Left,
+                    Direction::Up, Direction::Up
+                ];
+
+                // For each movement, perform the following actions
+                for  movement in movements {
+
+                    // Since I created a world ad hoc, these destroy() should have enough energy
+                    match destroy(self, world, movement.clone()) {
+                        Ok(_) => (),
+                        Err(error) =>
+                            eprintln!("ERR\n\tERROR: {:?}\n\tMOVEMENT: {:?}\n\tBACKPACK SIZE: {}",
+                                      error,
+                                      movement,
+                                      self.get_backpack().get_size()
+                            )
+                    }
+
+                    // Since I created a world ad hoc, those movements should be possible
+                    go(self, world, movement.clone()).expect("CANNOT MOVE");
                 }
             }
 
