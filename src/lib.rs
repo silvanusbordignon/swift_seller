@@ -39,6 +39,7 @@ impl SwiftSeller {
 
         let mut market_near:bool = false;
         let mut market_dir = Direction::Left; // initialized
+        let mut interactions_left:usize = 0;
 
         let robot_view= robot_view(robot, &world);
         for (i, row) in robot_view.iter().enumerate() {
@@ -49,7 +50,8 @@ impl SwiftSeller {
                             | None => (),
                             | Some(tile) => {
                                 match tile.content {
-                                    Content::Market(_) => {
+                                    Content::Market(n) => {
+                                        interactions_left = n;
                                         market_near = true;
                                         match (i, j) {
                                             (0, 1) => market_dir = Direction::Up,
@@ -73,6 +75,10 @@ impl SwiftSeller {
         if !market_near {
             return Err(LibError::OperationNotAllowed);
         }
+        // Straight off the bat, if the market has no interactions left, quit
+        if interactions_left < 1 {
+            return Err(LibError::OperationNotAllowed);
+        }
 
         // If the robot is near a Market, sell the items held in its backpack which can be sold
 
@@ -94,6 +100,11 @@ impl SwiftSeller {
                     };
                 }
             }
+        interactions_left -= 1;
+        // Check if I can sell other items
+        if interactions_left < 1 {
+            return Err(LibError::OperationNotAllowed);
+        }
         for (item, qty) in cloned_contents.clone() {
             if item == Content::Tree(0)
                 && qty > 0 {
@@ -102,6 +113,11 @@ impl SwiftSeller {
                     _ => None
                 };
             }
+        }
+        interactions_left -= 1;
+        // Same concept, check if I can sell other items
+        if interactions_left < 1 {
+            return Err(LibError::OperationNotAllowed);
         }
         for (item, qty) in cloned_contents.clone() {
             if item == Content::Rock(0)
@@ -112,6 +128,8 @@ impl SwiftSeller {
                 };
             }
         }
+        // interactions_left -= 1;
+
         Ok(items_sold)
 
     }
