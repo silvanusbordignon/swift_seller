@@ -32,16 +32,17 @@ impl SwiftSeller {
     /// - does not support multi-threading
     pub fn swift_seller(
         robot: &mut impl Runnable,
-        world: &mut World
+        world: &mut World,
+        vec: Vec<Content>
     ) -> Result<HashMap<Content, usize>, LibError> {
 
         // First of all, let's check if the robot happens to be near a tile with a Market on it
 
-        let mut market_near:bool = false;
+        let mut market_near: bool = false;
         let mut market_dir = Direction::Left; // initialized
-        let mut interactions_left:usize = 0;
+        let mut interactions_left: usize = 0;
 
-        let robot_view= robot_view(robot, &world);
+        let robot_view = robot_view(robot, &world);
         for (i, row) in robot_view.iter().enumerate() {
             for (j, col) in row.iter().enumerate() {
                 match (i, j) {
@@ -82,82 +83,48 @@ impl SwiftSeller {
 
         // If the robot is near a Market, sell the items held in its backpack which can be sold
 
-        let mut _coins_earned:usize = 0;
+        let mut _coins_earned: usize = 0;
 
-        let mut items_sold:HashMap<Content, usize> = HashMap::new();
+        let mut items_sold: HashMap<Content, usize> = HashMap::new();
         items_sold.insert(Content::Rock(0), 0usize);
         items_sold.insert(Content::Tree(0), 0usize);
         items_sold.insert(Content::Fish(0), 0usize);
 
         let cloned_contents = robot.get_backpack().get_contents().clone();
 
-        for (item, qty) in cloned_contents.clone() {
-            if item == Content::Fish(0)
-                && qty > 0 {
-                    match seller(robot, world, item.clone(), qty, market_dir.clone()) {
-                        Ok(value) => items_sold.insert(item, value),
-                        _ => None
-                    };
+        // Sell items in order given by the user
+        for items in vec {
+            for (item, qty) in cloned_contents.clone() {
+                if interactions_left < 1 {
+                    return Err(LibError::OperationNotAllowed);
+                }
+                if items == item && qty > 0 {
+                    match put(
+                        robot,
+                        world,
+                        item.clone(),
+                        qty,
+                        market_dir.clone()
+                    ) {
+                        Ok(earned) => {
+                            _coins_earned += earned;
+                            let sold = qty - robot.get_backpack().get_contents().clone().get(&item).unwrap();
+                            items_sold.insert(item, sold);
+                            interactions_left -= 1;
+                        },
+                        Err(LibError::NotEnoughSpace(tried)) => {
+                            return Err(LibError::NotEnoughSpace(tried));
+                        },
+                        _ => {
+                            eprintln!("PUT arguments: {:?} {:?} {:?}", item.clone(), qty, market_dir.clone());
+                            panic!("UNEXPECTED ERROR - CONTACT THE GROUP")
+                        }
+                    }
                 }
             }
-        interactions_left -= 1;
-        // Check if I can sell other items
-        if interactions_left < 1 {
-            return Ok(items_sold)
         }
-        for (item, qty) in cloned_contents.clone() {
-            if item == Content::Tree(0)
-                && qty > 0 {
-                match seller(robot, world, item.clone(), qty, market_dir.clone()) {
-                    Ok(value) => items_sold.insert(item, value),
-                    _ => None
-                };
-            }
-        }
-        interactions_left -= 1;
-        // Same concept, check if I can sell other items
-        if interactions_left < 1 {
-            return Ok(items_sold)
-        }
-        for (item, qty) in cloned_contents.clone() {
-            if item == Content::Rock(0)
-                && qty > 0 {
-                match seller(robot, world, item.clone(), qty, market_dir.clone()) {
-                    Ok(value) => items_sold.insert(item, value),
-                    _ => None
-                };
-            }
-        }
-        // interactions_left -= 1;
-
-        return Ok(items_sold)
+        Ok(items_sold)
     }
-}
-pub fn seller(
-    robot: &mut impl Runnable,
-    world: &mut World,
-    item: Content,
-    qty: usize,
-    market_dir: Direction,
-) -> Result<usize, LibError>{
-    match put(
-        robot,
-        world,
-        item.clone(),
-        qty,
-        market_dir.clone()
-    ) {
-        Ok(_earned) => {},
-        Err(LibError::NotEnoughSpace(tried)) => {
-            return Err(LibError::NotEnoughSpace(tried));
-        },
-        _ => {
-            eprintln!("PUT arguments: {:?} {:?} {:?}", item.clone(), qty, market_dir.clone());
-            panic!("UNEXPECTED ERROR - CONTACT THE GROUP")
-        }
-    }
-    let items_sold = qty - robot.get_backpack().get_contents().clone().get(&item).unwrap();
-    Ok(items_sold)
 }
 
 #[cfg(test)]
@@ -321,7 +288,7 @@ mod tests {
 
                     // Every move I should NOT find a market nearby (or find one with value 0)
                     assert_eq!(
-                        SwiftSeller::swift_seller(self, world),
+                        SwiftSeller::swift_seller(self, world, vec![Content::Fish(0), Content::Tree(0), Content::Rock(0)]),
                         Err(LibError::OperationNotAllowed)
                     )
                 }
@@ -398,8 +365,10 @@ mod tests {
 
                     // Let's check
                     if i % 2 == 0 {
+
                         assert_eq!(
-                            SwiftSeller::swift_seller(self, world),
+
+                            SwiftSeller::swift_seller(self, world, vec![Content::Fish(0), Content::Tree(0), Content::Rock(0)]),
                             Ok(empty_map)
                         )
                     }
@@ -505,7 +474,7 @@ mod tests {
 
                     // Now I can finally call the function to interact with the Market
                     println!("Sell?");
-                    match SwiftSeller::swift_seller(self, world) {
+                    match SwiftSeller::swift_seller(self, world, vec![Content::Fish(0), Content::Tree(0), Content::Rock(0)]) {
                         Err(LibError::OperationNotAllowed) =>
                             eprintln!("No Market nearby!"),
                         Err(LibError::NotEnoughSpace(tried)) =>
