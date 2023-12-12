@@ -9,7 +9,7 @@ pub struct SwiftSeller;
 impl Tools for SwiftSeller {}
 
 impl SwiftSeller {
-    /// Sell at a Market every item in the robot's backpack
+    /// Sell at a Market every item in the robot's backpack, prioritizing the most profitable sales
     ///
     /// # Usage
     /// ```rust
@@ -19,6 +19,7 @@ impl SwiftSeller {
     /// # Arguments
     /// - `robot`: The robot
     /// - `world`: The world in which the robot is
+    /// - `vec`: The items you want the tool to auto-sell
     ///
     /// # Returns
     /// - `HashMap<Content, usize>`: The items sold at the Market and their quantity
