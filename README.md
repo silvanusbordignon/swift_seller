@@ -22,11 +22,14 @@ We build this tool incrementally, by adding small capabilities, one at a time:
 - [x] Pull the library from the register and have a running robot
 - [x] Detect when the robot is near a market
 - [x] Sell everything the robot holds in its backpack
-- [ ] Prioritize the most profitable sales
-- [ ] Filter for what we want to sell and what we prefer not to
+- [x] Prioritize the most profitable sales
+- [x] Filter for what we want to sell and what we prefer not to
 
 All the while we also need to take into consideration:
 
-- [ ] Documentation
-- [ ] Errors returned to the user
+- [x] Documentation
+- [x] Errors returned to the user
   - as of right now we consider returning a `LibError::OperationNotAllowed` when the robot is not near a `Market` and `LibError::NotEnoughSpace` when the robot cannot hold the coins earned from the sale.
+
+What more can we do:
+- [ ] More testing!
