@@ -298,17 +298,15 @@ mod tests {
                 ];
 
                 // For each movement, perform the following actions
-                for (i, movement) in movements.iter().enumerate() {
+                for movement in movements {
                     // Since I created a world ad hoc, those movements should be possible
                     go(self, world, movement.clone()).expect("CANNOT MOVE");
 
-                    // Every two moves I should NOT find a market nearby
-                    if i % 2 != 0 {
-                        assert_eq!(
-                            SwiftSeller::swift_seller(self, world),
-                            Err(LibError::OperationNotAllowed)
-                        )
-                    }
+                    // Every move I should NOT find a market nearby (or find one with value 0)
+                    assert_eq!(
+                        SwiftSeller::swift_seller(self, world),
+                        Err(LibError::OperationNotAllowed)
+                    )
                 }
             }
 
