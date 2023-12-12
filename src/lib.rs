@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use robotics_lib::interface::{Tools, robot_view, put, Direction, where_am_i};
+use robotics_lib::interface::{Tools, robot_view, put, Direction};
 use robotics_lib::world::World;
 use robotics_lib::runner::Runnable;
 use robotics_lib::utils::LibError;
@@ -85,43 +85,62 @@ impl SwiftSeller {
 
         let cloned_contents = robot.get_backpack().get_contents().clone();
 
-        for (item, qty) in cloned_contents {
-            if vec![Content::Rock(0), Content::Tree(0), Content::Fish(0)].contains(&item)
+        for (item, qty) in cloned_contents.clone() {
+            if item == Content::Fish(0)
                 && qty > 0 {
-                match put(
-                    robot,
-                    world,
-                    item.clone(),
-                    qty,
-                    market_dir.clone()
-                ) {
-                    Ok(earned) => {
-                        _coins_earned += earned;
-                        match item {
-                            Content::Rock(0) => items_sold.insert(Content::Rock(0), qty),
-                            Content::Tree(0) => items_sold.insert(Content::Tree(0), qty),
-                            Content::Fish(0) => items_sold.insert(Content::Fish(0), qty),
-                            _ => None
-                        };
-                    },
-                    Err(LibError::NotEnoughSpace(tried)) => {
-                        return Err(LibError::NotEnoughSpace(tried));
-                    },
-                    Err(err) => {
-                        eprintln!("{:?}", err);
-                        eprintln!("PUT arguments: {:?} {:?} {:?}",
-                                  item.clone(),
-                                  qty,
-                                  market_dir.clone());
-
-                        panic!("UNEXPECTED ERROR - CONTACT THE GROUP")
-                    }
+                    match seller(robot, world, item.clone(), qty, market_dir.clone()) {
+                        Ok(value) => items_sold.insert(item, value),
+                        _ => None
+                    };
                 }
             }
+        for (item, qty) in cloned_contents.clone() {
+            if item == Content::Tree(0)
+                && qty > 0 {
+                match seller(robot, world, item.clone(), qty, market_dir.clone()) {
+                    Ok(value) => items_sold.insert(item, value),
+                    _ => None
+                };
+            }
         }
-
+        for (item, qty) in cloned_contents.clone() {
+            if item == Content::Rock(0)
+                && qty > 0 {
+                match seller(robot, world, item.clone(), qty, market_dir.clone()) {
+                    Ok(value) => items_sold.insert(item, value),
+                    _ => None
+                };
+            }
+        }
         Ok(items_sold)
+
     }
+}
+pub fn seller(
+    robot: &mut impl Runnable,
+    world: &mut World,
+    item: Content,
+    qty: usize,
+    market_dir: Direction,
+) -> Result<usize, LibError>{
+    match put(
+        robot,
+        world,
+        item.clone(),
+        qty,
+        market_dir.clone()
+    ) {
+        Ok(_earned) => {},
+        Err(LibError::NotEnoughSpace(tried)) => {
+            return Err(LibError::NotEnoughSpace(tried));
+        },
+        _ => {
+            eprintln!("PUT arguments: {:?} {:?} {:?}", item.clone(), qty, market_dir.clone());
+            panic!("UNEXPECTED ERROR - CONTACT THE GROUP")
+        }
+    }
+    let items_sold = qty - robot.get_backpack().get_contents().clone().get(&item).unwrap();
+    Ok(items_sold)
 }
 
 #[cfg(test)]
@@ -131,7 +150,7 @@ mod tests {
     use robotics_lib::energy::Energy;
     use robotics_lib::event::events::Event;
 
-    use robotics_lib::interface::{destroy, Direction, go};
+    use robotics_lib::interface::{Direction, go, where_am_i, destroy };
 
     use robotics_lib::runner::backpack::BackPack;
     use robotics_lib::runner::{Robot, Runner};
