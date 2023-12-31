@@ -42,6 +42,7 @@ impl SwiftSeller {
         let mut market_near: bool = false;
         let mut market_dir = Direction::Left; // initialized
         let mut interactions_left: usize = 0;
+        let mut highest_interactions: usize = 0;
 
         let robot_view = robot_view(robot, &world);
         for (i, row) in robot_view.iter().enumerate() {
@@ -53,14 +54,19 @@ impl SwiftSeller {
                             | Some(tile) => {
                                 match tile.content {
                                     Content::Market(n) => {
-                                        interactions_left = n;
-                                        market_near = true;
-                                        match (i, j) {
-                                            (0, 1) => market_dir = Direction::Up,
-                                            (1, 0) => market_dir = Direction::Left,
-                                            (1, 2) => market_dir = Direction::Right,
-                                            (2, 1) => market_dir = Direction::Down,
-                                            _ => return Err(LibError::OperationNotAllowed)
+                                        if n > highest_interactions {
+                                            interactions_left = n;
+                                            highest_interactions = n;
+
+                                            market_near = true;
+                                            match (i, j) {
+                                                (0, 1) => market_dir = Direction::Up,
+                                                (1, 0) => market_dir = Direction::Left,
+                                                (1, 2) => market_dir = Direction::Right,
+                                                (2, 1) => market_dir = Direction::Down,
+                                                _ => return Err(LibError::OperationNotAllowed)
+                                            }
+
                                         }
                                     },
                                     _ => ()
@@ -524,6 +530,164 @@ mod tests {
 
         // Since the weather is sunny day, the robot is walking on grass, and it starts with full
         // energy, I can walk around the Market content all in one tick
+        start(run);
+    }
+
+    /**************************************************************************
+    *  TWO MARKETS WORLD (SPAWN at 1,1):
+    *    ______________________________________
+    *   |            |            |            |
+    *   |    Grass   |   Grass    |   Grass    |
+    *   |    0 el    |   0 el     |   0 el     |
+    *   |    None    |  Tree(2)   |   None     |
+    *    ______________________________________
+    *   |            |            |            |
+    *   |    Grass   |   Grass    |   Grass    |
+    *   |    0 el    |   0 el     |   0 el     |
+    *   |  Market(2) |   None     | Market(0)  |
+    *    ______________________________________
+    *   |            |            |            |
+    *   |    Grass   |   Grass    |   Grass    |
+    *   |    0 el    |   0 el     |   0 el     |
+    *   |    None    |   None     |   None     |
+    *   |____________|____________|____________|
+    *
+    *   Copyright: comment format courtesy of the common crate
+    */
+
+    // Spawns at (1,1) genera
+    fn test_two_markets_world() -> impl Generator {
+        // World generator
+
+        struct TwoMarketsWorld { }
+        impl TwoMarketsWorld {
+            fn new() -> Self {
+                TwoMarketsWorld { }
+            }
+        }
+        impl Generator for TwoMarketsWorld {
+            fn gen(&mut self) -> robotics_lib::world::world_generator::World {
+                let mut map: Vec<Vec<Tile>> = Vec::new();
+
+                map.push(Vec::new());
+                map[0].push(Tile {
+                    tile_type: TileType::Grass,
+                    content: Content::None,
+                    elevation: 0,
+                });
+                map[0].push(Tile {
+                    tile_type: TileType::Grass,
+                    content: Content::Tree(2),
+                    elevation: 0,
+                });
+                map[0].push(Tile {
+                    tile_type: TileType::Grass,
+                    content: Content::None,
+                    elevation: 0,
+                });
+
+                map.push(Vec::new());
+                map[1].push(Tile {
+                    tile_type: TileType::Grass,
+                    content: Content::Market(2),
+                    elevation: 0,
+                });
+                map[1].push(Tile {
+                    tile_type: TileType::Grass,
+                    content: Content::None,
+                    elevation: 0,
+                });
+                map[1].push(Tile {
+                    tile_type: TileType::Grass,
+                    content: Content::Market(0),
+                    elevation: 0,
+                });
+
+                map.push(Vec::new());
+                for _ in 0..3 {
+                    map[2].push(Tile {
+                        tile_type: TileType::Grass,
+                        content: Content::None,
+                        elevation: 0,
+                    });
+                }
+
+                let environmental_conditions =
+                    EnvironmentalConditions::new(&[WeatherType::Sunny],
+                                                 15,
+                                                 12);
+                (map, (1, 1), environmental_conditions.unwrap(), 100.0, None)
+            }
+        }
+
+        TwoMarketsWorld::new()
+    }
+
+    #[test]
+    fn one_empty_market() {
+
+        // Generate the test world
+        let mut generator = test_two_markets_world();
+
+        // Robot
+
+        struct MyRobot(Robot);
+
+        impl Runnable for MyRobot {
+            fn process_tick(&mut self, world: &mut World) {
+
+                // Destroy the tree on top
+                match destroy(self, world, Direction::Up) {
+                    Ok(_) => (),
+                    Err(_) => eprintln!("Error when destroying")
+                }
+
+                match SwiftSeller::swift_seller(self, world, vec![Content::Tree(0)]) {
+                    Err(LibError::OperationNotAllowed) =>
+                        eprintln!("No Market nearby!"),
+                    Err(LibError::NotEnoughSpace(tried)) =>
+                        eprintln!("Can't hold {} coins!", tried),
+                    Err(any) =>
+                        eprintln!("{:?}", any),
+                    Ok(map) => {
+                        println!("Sold to market:");
+                        for (key, value) in map {
+                            println!("\t- item: {}, qty: {}", key, value)
+                        }
+                    }
+                }
+            }
+
+            fn handle_event(&mut self, event: Event) {
+                match event {
+                    | Event::Terminated => {}
+                    | _ => {}
+                }
+            }
+
+            fn get_energy(&self) -> &Energy {
+                &self.0.energy
+            }
+            fn get_energy_mut(&mut self) -> &mut Energy {
+                &mut self.0.energy
+            }
+            fn get_coordinate(&self) -> &Coordinate {
+                &self.0.coordinate
+            }
+            fn get_coordinate_mut(&mut self) -> &mut Coordinate {
+                &mut self.0.coordinate
+            }
+            fn get_backpack(&self) -> &BackPack {
+                &self.0.backpack
+            }
+            fn get_backpack_mut(&mut self) -> &mut BackPack { &mut self.0.backpack }
+        }
+
+        // Instance the robot and the world
+
+        let my_robot = MyRobot(Robot::new());
+        let run = Runner::new(Box::new(my_robot), &mut generator);
+
         start(run);
     }
 }
