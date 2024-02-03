@@ -30,7 +30,7 @@ impl SwiftSeller {
     /// - `NotEnoughSpace`: The robot doesn't have enough space for earned coins
     ///
     /// # Notes
-    /// - does not support multi-threading
+    /// - does not support multiple robots
     pub fn swift_seller(
         robot: &mut impl Runnable,
         world: &mut World,
@@ -122,8 +122,8 @@ impl SwiftSeller {
                         Err(LibError::NotEnoughSpace(tried)) => {
                             return Err(LibError::NotEnoughSpace(tried));
                         },
-                        _ => {
-                            eprintln!("PUT arguments: {:?} {:?} {:?}", item.clone(), qty, market_dir.clone());
+                        Err(e) => {
+                            eprintln!("ERR: {:?} - PUT arguments: {:?} {:?} {:?}", e, item.clone(), qty, market_dir.clone());
                             panic!("UNEXPECTED ERROR - CONTACT THE GROUP")
                         }
                     }
