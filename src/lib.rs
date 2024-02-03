@@ -122,8 +122,8 @@ impl SwiftSeller {
                         Err(LibError::NotEnoughSpace(tried)) => {
                             return Err(LibError::NotEnoughSpace(tried));
                         },
-                        Err(e) => {
-                            eprintln!("ERR: {:?} - PUT arguments: {:?} {:?} {:?}", e, item.clone(), qty, market_dir.clone());
+                        _ => {
+                            eprintln!("PUT arguments: {:?} {:?} {:?}", item.clone(), qty, market_dir.clone());
                             panic!("UNEXPECTED ERROR - CONTACT THE GROUP")
                         }
                     }
@@ -530,6 +530,78 @@ mod tests {
 
         // Since the weather is sunny day, the robot is walking on grass, and it starts with full
         // energy, I can walk around the Market content all in one tick
+        start(run);
+    }
+
+    #[test]
+    fn zero_energy() {
+    // Generate the test world
+        let mut generator = test_world(100);
+
+        // Robot
+
+        struct MyRobot(Robot);
+
+        impl Runnable for MyRobot {
+            fn process_tick(&mut self, world: &mut World) {
+                println!("{:?}", self.get_energy());
+                match destroy(self, world, Direction::Right) {
+                    Ok(_) => (),
+                    Err(error) =>
+                        eprintln!("ERR\n\tERROR: {:?}\n\tMOVEMENT: {:?}\n\tBACKPACK SIZE: {}",
+                                  error,
+                                  Direction::Right,
+                                  self.get_backpack().get_size()
+                        )
+                }
+                println!("{:?}", self.get_energy());
+                go(self, world, Direction::Right).expect("CANNOT MOVE");
+                println!("{:?}", self.get_energy());
+                for _ in 0..498 {
+                    go(self, world, Direction::Right).expect("CANNOT MOVE");
+                    go(self, world, Direction::Left).expect("CANNOT MOVE");
+                }
+                println!("{:?}", self.get_energy());
+                println!("{:?}", self.get_backpack());
+
+                match SwiftSeller::swift_seller(self, world, vec![Content::Tree(0)]) {
+                    Ok(_) => {}
+                    Err(_) => {}
+                }
+                println!("{:?}", self.get_energy());
+                println!("{:?}", self.get_backpack());
+            }
+
+            fn handle_event(&mut self, event: Event) {
+                match event {
+                    | Event::Terminated => {}
+                    | _ => {}
+                }
+            }
+
+            fn get_energy(&self) -> &Energy {
+                &self.0.energy
+            }
+            fn get_energy_mut(&mut self) -> &mut Energy {
+                &mut self.0.energy
+            }
+            fn get_coordinate(&self) -> &Coordinate {
+                &self.0.coordinate
+            }
+            fn get_coordinate_mut(&mut self) -> &mut Coordinate {
+                &mut self.0.coordinate
+            }
+            fn get_backpack(&self) -> &BackPack {
+                &self.0.backpack
+            }
+            fn get_backpack_mut(&mut self) -> &mut BackPack { &mut self.0.backpack }
+        }
+
+        // Instance the robot and the world
+
+        let my_robot = MyRobot(Robot::new());
+        let run = Runner::new(Box::new(my_robot), &mut generator);
+
         start(run);
     }
 
