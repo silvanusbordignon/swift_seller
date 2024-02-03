@@ -122,8 +122,8 @@ impl SwiftSeller {
                         Err(LibError::NotEnoughSpace(tried)) => {
                             return Err(LibError::NotEnoughSpace(tried));
                         },
-                        _ => {
-                            eprintln!("PUT arguments: {:?} {:?} {:?}", item.clone(), qty, market_dir.clone());
+                        Err(e) => {
+                            eprintln!("ERR: {:?} - PUT arguments: {:?} {:?} {:?}", e, item.clone(), qty, market_dir.clone());
                             panic!("UNEXPECTED ERROR - CONTACT THE GROUP")
                         }
                     }
