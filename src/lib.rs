@@ -94,9 +94,6 @@ impl SwiftSeller {
         let mut _coins_earned: usize = 0;
 
         let mut items_sold: HashMap<Content, usize> = HashMap::new();
-        items_sold.insert(Content::Rock(0), 0usize);
-        items_sold.insert(Content::Tree(0), 0usize);
-        items_sold.insert(Content::Fish(0), 0usize);
 
         let cloned_contents = robot.get_backpack().get_contents().clone();
 
@@ -380,10 +377,7 @@ mod tests {
 
                     // When I'm nearby a market, I should try to sell everything; I have an empty
                     // backpack, so the returned value from the function call should be:
-                    let mut empty_map:HashMap<Content, usize> = HashMap::new();
-                    empty_map.insert(Content::Rock(0), 0);
-                    empty_map.insert(Content::Tree(0), 0);
-                    empty_map.insert(Content::Fish(0), 0);
+                    let empty_map:HashMap<Content, usize> = HashMap::new();
 
                     // Let's check
                     if i % 2 == 0 {
@@ -650,8 +644,6 @@ mod tests {
 
                 let mut rock_map:HashMap<Content, usize> = HashMap::new();
                 rock_map.insert(Content::Rock(0), 3);
-                rock_map.insert(Content::Tree(0), 0);
-                rock_map.insert(Content::Fish(0), 0);
 
                 assert_eq!(SwiftSeller::swift_seller(
                     self,
