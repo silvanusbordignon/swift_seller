@@ -26,11 +26,11 @@ impl SwiftSeller {
     /// - `LibError`: The error that occurred
     ///
     /// # Errors
-    /// - `OperationNotAllowed`: The robot is not near a tile with a Market on it
+    /// - `OperationNotAllowed`: The robot is not near a tile with a Market on it or has 0 interactions left to begin with
     /// - `NotEnoughSpace`: The robot doesn't have enough space for earned coins
     ///
     /// # Notes
-    /// - tool only sells items that a Market accepts, so Rocks, Trees and Fish
+    /// - if the market's interaction get to 0 between the sale of multiple valid items, the map containing the items sold up to that point is returned
     /// - does not support multiple robots
     pub fn swift_seller(
         robot: &mut impl Runnable,
@@ -100,6 +100,9 @@ impl SwiftSeller {
 
         let cloned_contents = robot.get_backpack().get_contents().clone();
 
+        // If the tool sells at least one item, return it when the interactions left get to 0
+        let mut sold_anything:bool = false;
+
         // Sell items in order given by the user
         for items in vec {
             // Allow selling only the items that can actually be sold
@@ -107,7 +110,11 @@ impl SwiftSeller {
                 Content::Rock(_) | Content::Fish(_) | Content::Tree(_) => {
                     for (item, qty) in cloned_contents.clone() {
                         if interactions_left < 1 {
-                            return Err(LibError::OperationNotAllowed);
+                            return if sold_anything {
+                                Ok(items_sold)
+                            } else {
+                                Err(LibError::OperationNotAllowed)
+                            }
                         }
                         if items == item && qty > 0 {
                             match put(
@@ -122,6 +129,7 @@ impl SwiftSeller {
                                     let sold = qty - robot.get_backpack().get_contents().clone().get(&item).unwrap();
                                     items_sold.insert(item, sold);
                                     interactions_left -= 1;
+                                    sold_anything = true;
                                 },
                                 Err(LibError::NotEnoughSpace(tried)) => {
                                     return Err(LibError::NotEnoughSpace(tried));
@@ -577,6 +585,81 @@ mod tests {
                 }
                 println!("{:?}", self.get_energy());
                 println!("{:?}", self.get_backpack());
+            }
+
+            fn handle_event(&mut self, event: Event) {
+                match event {
+                    | Event::Terminated => {}
+                    | _ => {}
+                }
+            }
+
+            fn get_energy(&self) -> &Energy {
+                &self.0.energy
+            }
+            fn get_energy_mut(&mut self) -> &mut Energy {
+                &mut self.0.energy
+            }
+            fn get_coordinate(&self) -> &Coordinate {
+                &self.0.coordinate
+            }
+            fn get_coordinate_mut(&mut self) -> &mut Coordinate {
+                &mut self.0.coordinate
+            }
+            fn get_backpack(&self) -> &BackPack {
+                &self.0.backpack
+            }
+            fn get_backpack_mut(&mut self) -> &mut BackPack { &mut self.0.backpack }
+        }
+
+        // Instance the robot and the world
+
+        let my_robot = MyRobot(Robot::new());
+        let run = Runner::new(Box::new(my_robot), &mut generator);
+
+        start(run);
+    }
+
+    // After selling some of the items, if the market gets to zero interactions the tool returns
+    // an error, while it should return an empty hashmap/the map of items sold up to that point
+    #[test]
+    fn errore_alessandra() {
+        // Generate the test world
+        let mut generator = test_world(1);
+
+        // Robot
+
+        struct MyRobot(Robot);
+
+        impl Runnable for MyRobot {
+            fn process_tick(&mut self, world: &mut World) {
+                // Destroy right to get trees
+                let _ = destroy(self, world, Direction::Right);
+
+                // Move right-right to get near rocks
+                let _ = go(self, world, Direction::Right);
+                let _ = go(self, world, Direction::Right);
+
+                // Destroy down to get rocks
+                let _ = destroy(self, world, Direction::Down);
+
+                // Move down to get near rocks
+                let _ = go(self, world, Direction::Down);
+
+                // Start selling what you have
+
+                let mut rock_map:HashMap<Content, usize> = HashMap::new();
+                rock_map.insert(Content::Rock(0), 3);
+                rock_map.insert(Content::Tree(0), 0);
+                rock_map.insert(Content::Fish(0), 0);
+
+                assert_eq!(SwiftSeller::swift_seller(
+                    self,
+                    world,
+                    vec![Content::Rock(0), Content::Tree(0)]),
+                    Ok(rock_map)
+                );
+
             }
 
             fn handle_event(&mut self, event: Event) {
