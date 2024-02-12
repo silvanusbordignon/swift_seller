@@ -30,6 +30,7 @@ impl SwiftSeller {
     /// - `NotEnoughSpace`: The robot doesn't have enough space for earned coins
     ///
     /// # Notes
+    /// - tool only sells items that a Market accepts, so Rocks, Trees and Fish
     /// - does not support multiple robots
     pub fn swift_seller(
         robot: &mut impl Runnable,
@@ -101,33 +102,39 @@ impl SwiftSeller {
 
         // Sell items in order given by the user
         for items in vec {
-            for (item, qty) in cloned_contents.clone() {
-                if interactions_left < 1 {
-                    return Err(LibError::OperationNotAllowed);
-                }
-                if items == item && qty > 0 {
-                    match put(
-                        robot,
-                        world,
-                        item.clone(),
-                        qty,
-                        market_dir.clone()
-                    ) {
-                        Ok(earned) => {
-                            _coins_earned += earned;
-                            let sold = qty - robot.get_backpack().get_contents().clone().get(&item).unwrap();
-                            items_sold.insert(item, sold);
-                            interactions_left -= 1;
-                        },
-                        Err(LibError::NotEnoughSpace(tried)) => {
-                            return Err(LibError::NotEnoughSpace(tried));
-                        },
-                        Err(e) => {
-                            eprintln!("ERR: {:?} - PUT arguments: {:?} {:?} {:?}", e, item.clone(), qty, market_dir.clone());
-                            panic!("UNEXPECTED ERROR - CONTACT THE GROUP")
+            // Allow selling only the items that can actually be sold
+            match items {
+                Content::Rock(_) | Content::Fish(_) | Content::Tree(_) => {
+                    for (item, qty) in cloned_contents.clone() {
+                        if interactions_left < 1 {
+                            return Err(LibError::OperationNotAllowed);
+                        }
+                        if items == item && qty > 0 {
+                            match put(
+                                robot,
+                                world,
+                                item.clone(),
+                                qty,
+                                market_dir.clone()
+                            ) {
+                                Ok(earned) => {
+                                    _coins_earned += earned;
+                                    let sold = qty - robot.get_backpack().get_contents().clone().get(&item).unwrap();
+                                    items_sold.insert(item, sold);
+                                    interactions_left -= 1;
+                                },
+                                Err(LibError::NotEnoughSpace(tried)) => {
+                                    return Err(LibError::NotEnoughSpace(tried));
+                                },
+                                Err(e) => {
+                                    eprintln!("ERR: {:?} - PUT arguments: {:?} {:?} {:?}", e, item.clone(), qty, market_dir.clone());
+                                    panic!("UNEXPECTED ERROR - CONTACT THE GROUP")
+                                }
+                            }
                         }
                     }
                 }
+                _ => ()
             }
         }
         Ok(items_sold)
