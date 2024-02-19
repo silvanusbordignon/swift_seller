@@ -4,6 +4,7 @@ use robotics_lib::world::environmental_conditions::WeatherType::Sunny;
 use robotics_lib::world::tile::Content;
 use robotics_lib::world::tile::TileType;
 use robotics_lib::world::tile::Tile;
+use ragnarok::GuiRunner;
 
 use robotics_lib::world::world_generator::Generator;
 use robotics_lib::world::world_generator::World;
